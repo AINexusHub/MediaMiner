@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # MySQL 8.0
+  mysql:
+    image: mysql:8.0
+    container_name: news-bot-mysql
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: news_bot_db
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+    networks:
+      - news-bot-network
+
+  # MinIO
+  minio:
+    image: minio/minio
+    container_name: news-bot-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server ./data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - minio_data:/data
+    restart: unless-stopped
+    networks:
+      - news-bot-network
+
+  # Milvus 2.3.0 单机版（内置etcd/minio，避免依赖问题）
+  milvus-standalone:
+    image: milvusdb/milvus:v2.3.0
+    container_name: news-bot-milvus
+    command: ["standalone", "run"]
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    environment:
+      ETCD_USE_EMBED: "true"
+      MINIO_USE_EMBED: "true"
+    volumes:
+      - milvus_data:/var/lib/milvus
+    restart: unless-stopped
+    networks:
+      - news-bot-network
+
+volumes:
+  mysql_data:
+  minio_data:
+  milvus_data:
+
+networks:
+  news-bot-network:
+    driver: bridge
